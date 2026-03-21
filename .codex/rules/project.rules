@@ -1,0 +1,66 @@
+# OOP Draw project rules
+# These rules apply to commands requested outside the sandbox.
+# Keep them narrow and focused on preventing destructive project actions.
+
+prefix_rule(
+    pattern = ["git", "reset", "--hard"],
+    decision = "forbidden",
+    justification = "Do not discard repository changes. Use targeted revert workflows and ask the user first.",
+    match = [
+        "git reset --hard",
+        "git reset --hard HEAD~1",
+    ],
+    not_match = [
+        "git reset --soft HEAD~1",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", "checkout", "--"],
+    decision = "forbidden",
+    justification = "Do not overwrite tracked files from Git without explicit user direction.",
+    match = [
+        "git checkout -- AGENTS.md",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", "clean", ["-fd", "-fdx", "-xdf"]],
+    decision = "forbidden",
+    justification = "Do not remove untracked files aggressively in this project. Clean specific paths only with user approval.",
+    match = [
+        "git clean -fd",
+        "git clean -fdx",
+        "git clean -xdf",
+    ],
+)
+
+prefix_rule(
+    pattern = ["rm", "-rf"],
+    decision = "prompt",
+    justification = "Recursive deletes should always be reviewed before running outside the sandbox.",
+    match = [
+        "rm -rf node_modules",
+        "rm -rf dist",
+    ],
+)
+
+prefix_rule(
+    pattern = ["pnpm", ["add", "remove"]],
+    decision = "prompt",
+    justification = "Dependency changes affect the whole workspace and should be reviewed.",
+    match = [
+        "pnpm add vue",
+        "pnpm remove lodash",
+    ],
+)
+
+prefix_rule(
+    pattern = ["npm", ["install", "uninstall"]],
+    decision = "prompt",
+    justification = "Dependency changes affect the whole workspace and should be reviewed.",
+    match = [
+        "npm install vue",
+        "npm uninstall lodash",
+    ],
+)

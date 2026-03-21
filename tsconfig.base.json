@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowJs": false,
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "baseUrl": ".",
+    "types": ["node"],
+    "paths": {
+      "@oop-draw/shared": ["packages/shared/src/index.ts"],
+      "@oop-draw/editor-core": ["packages/editor-core/src/index.ts"],
+      "@oop-draw/ui": ["packages/ui/src/index.ts"],
+      "@oop-draw/editor-shell": ["packages/editor-shell/src/index.ts"],
+      "@oop-draw/platform": ["packages/platform/src/index.ts"]
+    }
+  }
+}

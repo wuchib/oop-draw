@@ -1,0 +1,20 @@
+{
+  "name": "@oop-draw/editor-shell",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@oop-draw/editor-core": "workspace:*",
+    "@oop-draw/platform": "workspace:*",
+    "@oop-draw/shared": "workspace:*",
+    "@oop-draw/ui": "workspace:*",
+    "pinia": "^3.0.3",
+    "vue": "^3.5.21"
+  },
+  "scripts": {
+    "typecheck": "vue-tsc -p tsconfig.json --noEmit"
+  }
+}
