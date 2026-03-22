@@ -29,7 +29,7 @@ const updatedLabel = computed(() =>
 const documentStats = computed(() => ({
   assets: editor.document.value.assets.length,
   elements: editor.document.value.elements.length,
-  zoom: Math.round(editor.document.value.camera.zoom * 100),
+  zoom: editor.viewportState.value.zoomPercent,
 }));
 
 const showFooter = ref(true);
@@ -47,10 +47,22 @@ async function handleExport(): Promise<void> {
   await props.platform.notify('Export flow placeholder: PNG / SVG / JSON options will be wired here.');
 }
 
-useShortcuts(() => {
-  void editor.save();
-}, () => {
-  void editor.open();
+useShortcuts({
+  onSave: () => {
+    void editor.save();
+  },
+  onOpen: () => {
+    void editor.open();
+  },
+  onZoomIn: () => {
+    editor.controller.zoomIn();
+  },
+  onZoomOut: () => {
+    editor.controller.zoomOut();
+  },
+  onResetZoom: () => {
+    editor.controller.resetZoom();
+  },
 });
 </script>
 
@@ -59,8 +71,10 @@ useShortcuts(() => {
     <main class="relative h-screen overflow-hidden">
       <div class="relative h-full min-h-screen">
         <CanvasViewport
+          :controller="editor.controller"
           :document="editor.document.value"
           :tool="editor.currentTool.value"
+          :viewport-state="editor.viewportState.value"
         />
         <div class="pointer-events-none absolute inset-0">
           <div class="pointer-events-auto absolute right-3 top-3 z-40 flex items-start gap-3 md:right-4 md:top-4">

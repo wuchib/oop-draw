@@ -1,23 +1,41 @@
 import { onMounted, onUnmounted } from 'vue';
 
-export function useShortcuts(onSave: () => void, onOpen: () => void): void {
+interface ShortcutHandlers {
+  onSave: () => void;
+  onOpen: () => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onResetZoom: () => void;
+}
+
+export function useShortcuts(handlers: ShortcutHandlers): void {
   const handleKeydown = (event: KeyboardEvent) => {
     const isModifier = event.metaKey || event.ctrlKey;
-
-    if (!isModifier) {
-      return;
-    }
-
     const key = event.key.toLowerCase();
 
-    if (key === 's') {
+    if (isModifier && key === 's') {
       event.preventDefault();
-      onSave();
+      handlers.onSave();
     }
 
-    if (key === 'o') {
+    if (isModifier && key === 'o') {
       event.preventDefault();
-      onOpen();
+      handlers.onOpen();
+    }
+
+    if (isModifier && (key === '=' || key === '+')) {
+      event.preventDefault();
+      handlers.onZoomIn();
+    }
+
+    if (isModifier && key === '-') {
+      event.preventDefault();
+      handlers.onZoomOut();
+    }
+
+    if (isModifier && key === '0') {
+      event.preventDefault();
+      handlers.onResetZoom();
     }
   };
 

@@ -3,6 +3,7 @@ export * from './document/createDocument';
 export * from './document/migrateDocument';
 export * from './camera/camera';
 export * from './camera/coordinates';
+export * from './camera/ViewportConstraints';
 export * from './scene/scene';
 export * from './renderer/CanvasRenderer';
 export * from './tools/tool-machine';
