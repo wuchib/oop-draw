@@ -2,6 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import vue from '@vitejs/plugin-vue';
+import tailwindcss from '@tailwindcss/vite';
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const rendererRoot = path.join(rootDir, 'src', 'renderer');
@@ -22,6 +23,6 @@ export default defineConfig({
         input: path.join(rendererRoot, 'index.html'),
       },
     },
-    plugins: [vue()],
+    plugins: [vue(), tailwindcss()],
   },
 });

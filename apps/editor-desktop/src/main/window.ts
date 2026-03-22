@@ -10,7 +10,9 @@ export async function createMainWindow(): Promise<BrowserWindow> {
       preload: path.join(__dirname, '../preload/index.mjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true,
+      // electron-vite emits the preload entry as ESM (.mjs), which requires an
+      // unsandboxed preload context in Electron.
+      sandbox: false,
     },
   });
 

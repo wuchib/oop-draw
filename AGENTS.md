@@ -35,6 +35,8 @@ As the project is scaffolded, prefer this structure:
 ## Core architecture rules
 - Keep `packages/editor-core` free of Electron APIs, browser-only globals, and framework-specific UI code.
 - Keep shared Vue UI in `packages/ui` or `packages/editor-shell`.
+- Build business-neutral primitives in `packages/ui` with Tailwind CSS + Reka UI + a thin OOP Draw skin layer.
+- Keep `packages/editor-shell` focused on editor-specific composition such as toolbars, inspectors, status bars, and shell-level state wiring.
 - Keep platform-specific behavior in `packages/platform` or Electron `main` / `preload`.
 - Do not call Electron APIs directly from shared Vue components.
 - Do not make Web and Electron diverge in layout or interaction unless the platform difference is user-visible and necessary.
@@ -93,3 +95,5 @@ If commands are missing, add them as part of scaffolding rather than inventing o
 - Repeated workflow fixes should become skills.
 - Use subagents only for bounded parallel work such as repo exploration, architecture review, or test triage.
 - Keep AGENTS practical and update it after repeated friction.
+- Use the repo skill `oop-draw-component-system` when adding or reshaping primitives, tokens, or shared UI styling.
+- Use the reviewer agent `frontend_component_reviewer` when a task needs a focused read on component boundaries, token consistency, or Reka/Tailwind accessibility patterns.

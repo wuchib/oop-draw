@@ -1,14 +1,29 @@
 <template>
-  <section class="panel">
+  <section :class="panelClass">
     <slot />
   </section>
 </template>
 
-<style scoped>
-.panel {
-  border: 1px solid var(--od-color-border);
-  background: var(--od-color-panel);
-  border-radius: 12px;
-  padding: 1rem;
-}
-</style>
+<script setup lang="ts">
+import { computed } from 'vue';
+import { cn } from '../utils/cn';
+
+const props = withDefaults(
+  defineProps<{
+    class?: string;
+    inset?: boolean;
+  }>(),
+  {
+    class: undefined,
+    inset: false,
+  },
+);
+
+const panelClass = computed(() =>
+  cn(
+    'rounded-lg border border-border bg-panel px-4 py-4 text-text shadow-sm',
+    props.inset && 'bg-surface',
+    props.class,
+  ),
+);
+</script>

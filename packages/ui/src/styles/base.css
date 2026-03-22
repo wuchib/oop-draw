@@ -1,0 +1,36 @@
+@import "tailwindcss";
+@import "./tokens.css";
+@import "./reset.css";
+
+@theme inline {
+  --color-bg: var(--od-color-bg);
+  --color-panel: var(--od-color-panel);
+  --color-surface: var(--od-color-surface);
+  --color-surface-muted: var(--od-color-surface-muted);
+  --color-surface-raised: var(--od-color-surface-raised);
+  --color-border: var(--od-color-border);
+  --color-border-strong: var(--od-color-border-strong);
+  --color-text: var(--od-color-text);
+  --color-text-muted: var(--od-color-text-muted);
+  --color-accent: var(--od-color-accent);
+  --color-accent-foreground: var(--od-color-accent-foreground);
+  --color-overlay: var(--od-color-overlay);
+  --color-danger: var(--od-color-danger);
+  --radius-xs: var(--od-radius-xs);
+  --radius-sm: var(--od-radius-sm);
+  --radius-md: var(--od-radius-md);
+  --radius-lg: var(--od-radius-lg);
+  --shadow-sm: var(--od-shadow-sm);
+  --shadow-md: var(--od-shadow-md);
+  --shadow-lg: var(--od-shadow-lg);
+}
+
+@layer base {
+  body {
+    @apply bg-bg text-text antialiased;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--od-color-accent) 28%, transparent);
+  }
+}

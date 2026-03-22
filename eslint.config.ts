@@ -6,7 +6,7 @@ import vueParser from 'vue-eslint-parser';
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**', 'apps/marketing-share-web/**'],
+    ignores: ['**/dist/**', '**/out/**', '**/coverage/**', '**/node_modules/**', 'apps/marketing-share-web/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

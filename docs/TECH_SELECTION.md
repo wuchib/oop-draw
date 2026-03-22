@@ -16,6 +16,7 @@
 - 单元/组件测试：Vitest
 - 端到端测试：Playwright
 - 代码规范：ESLint + Prettier
+- 样式与基础组件：Tailwind CSS + Reka UI + 自建皮肤层
 
 这套选型的核心思路是：
 
@@ -421,7 +422,9 @@ renderer 职责：
 
 推荐：
 
-- 基础组件自建
+- 使用 `Tailwind CSS` 作为样式基础层
+- 使用 `Reka UI` 提供 Vue 生态下的无头交互原语
+- 在 `packages/ui` 中封装带品牌样式的 primitives，而不是直接把 Reka 原语散落在业务层
 - 图标使用 `lucide` 或同类轻量方案
 - 颜色、字号、阴影统一走 design token
 

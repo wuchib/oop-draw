@@ -1,5 +1,4 @@
-import '@oop-draw/ui/styles/reset.css';
-import '@oop-draw/ui/styles/tokens.css';
+import '@oop-draw/ui/styles/base.css';
 
 export { default as AppShell } from './AppShell.vue';
 export * from './composables/useEditorApp';
