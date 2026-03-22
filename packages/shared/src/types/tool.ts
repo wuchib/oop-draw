@@ -1,1 +1,1 @@
-export type ToolId = 'select' | 'rectangle' | 'text' | 'hand';
+export type ToolId = 'select' | 'hand' | 'rectangle' | 'ellipse' | 'arrow' | 'text';

@@ -11,6 +11,7 @@
     "@oop-draw/platform": "workspace:*",
     "@oop-draw/shared": "workspace:*",
     "@oop-draw/ui": "workspace:*",
+    "lucide-vue-next": "^0.577.0",
     "pinia": "^3.0.3",
     "vue": "^3.5.21"
   },

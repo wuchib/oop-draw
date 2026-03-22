@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from 'reka-ui';
-import { computed } from 'vue';
+import { computed, useSlots } from 'vue';
 import Button from './Button.vue';
 import { cn } from '../utils/cn';
 
@@ -35,6 +35,8 @@ const emit = defineEmits<{
   'update:open': [open: boolean];
 }>();
 
+const slots = useSlots();
+
 const contentClass = computed(() =>
   cn(
     'fixed top-1/2 left-1/2 z-50 grid w-[min(32rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border border-border bg-panel p-5 text-text shadow-lg outline-none',
@@ -45,7 +47,7 @@ const contentClass = computed(() =>
 
 <template>
   <DialogRoot :modal="props.modal" :open="props.open" @update:open="emit('update:open', $event)">
-    <DialogTrigger as-child>
+    <DialogTrigger v-if="slots.trigger" as-child>
       <slot name="trigger" />
     </DialogTrigger>
     <DialogPortal>

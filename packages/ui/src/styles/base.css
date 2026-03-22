@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "./tokens.css";
 @import "./reset.css";
+@source "../components";
+@source "../utils";
+@source "../../../editor-shell/src";
 
 @theme inline {
   --color-bg: var(--od-color-bg);
