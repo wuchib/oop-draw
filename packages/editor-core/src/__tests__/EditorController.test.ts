@@ -81,19 +81,36 @@ describe('EditorController', () => {
     expect(controller.getSnapshot().camera).toMatchObject({ x: 0, y: 0, zoom: 1 });
   });
 
-  it('updates document camera when zooming with the wheel', () => {
+  it('updates document camera when zooming with ctrl + wheel', () => {
     const controller = new EditorController();
 
     controller.setViewportSize(800, 600);
     controller.handleWheel({
       clientX: 320,
       clientY: 240,
+      deltaX: 0,
       deltaY: -120,
-      ctrlKey: false,
+      ctrlKey: true,
       metaKey: false,
     });
 
     expect(controller.getSnapshot().camera.zoom).toBeGreaterThan(1);
+  });
+
+  it('pans the camera when scrolling without ctrl', () => {
+    const controller = new EditorController();
+
+    controller.setViewportSize(800, 600);
+    controller.handleWheel({
+      clientX: 320,
+      clientY: 240,
+      deltaX: 30,
+      deltaY: 120,
+      ctrlKey: false,
+      metaKey: false,
+    });
+
+    expect(controller.getSnapshot().camera).toMatchObject({ x: -30, y: -120, zoom: 1 });
   });
 
   it('keeps document state in sync when using keyboard zoom helpers', () => {
@@ -129,5 +146,15 @@ describe('EditorController', () => {
       }),
     ).toBe(true);
     expect(controller.getViewportState().panSource).toBe('hand-tool');
+  });
+
+  it('toggles grid visibility in document app state', () => {
+    const controller = new EditorController();
+
+    controller.setGridEnabled(false);
+    expect(controller.getSnapshot().appState.gridEnabled).toBe(false);
+
+    controller.setGridEnabled(true);
+    expect(controller.getSnapshot().appState.gridEnabled).toBe(true);
   });
 });

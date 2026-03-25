@@ -141,7 +141,9 @@ useShortcuts({
               >
                 <CanvasSettingsDrawer
                   :show-footer="showFooter"
+                  :show-grid="editor.document.value.appState.gridEnabled"
                   @update:show-footer="showFooter = $event"
+                  @update:show-grid="editor.controller.setGridEnabled($event)"
                 />
               </Dialog>
             </Panel>

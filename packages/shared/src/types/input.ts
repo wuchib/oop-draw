@@ -13,6 +13,7 @@ export interface PointerInput {
 export interface WheelInput {
   clientX: number;
   clientY: number;
+  deltaX: number;
   deltaY: number;
   ctrlKey: boolean;
   metaKey: boolean;

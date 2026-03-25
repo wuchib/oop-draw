@@ -110,11 +110,98 @@ describe('CanvasViewport', () => {
     expect(handleWheelSpy).toHaveBeenCalledWith({
       clientX: 100,
       clientY: 120,
+      deltaX: 0,
       deltaY: -120,
       ctrlKey: false,
       metaKey: false,
     });
 
+    wrapper.unmount();
+  });
+
+  it('prevents default only for ctrl or meta wheel zoom gestures', async () => {
+    const controller = new EditorController(createDocument());
+
+    const wrapper = mount(CanvasViewport, {
+      props: {
+        controller,
+        document: controller.getSnapshot(),
+        tool: controller.getTool(),
+        viewportState: controller.getViewportState(),
+      },
+      global: {
+        stubs: {
+          Panel: {
+            template: '<div><slot /></div>',
+          },
+        },
+      },
+    });
+
+    const stage = wrapper.get('[aria-label="Canvas stage"]').element as HTMLDivElement;
+    vi.spyOn(stage, 'getBoundingClientRect').mockReturnValue({
+      width: 640,
+      height: 480,
+      left: 0,
+      top: 0,
+      right: 640,
+      bottom: 480,
+      x: 0,
+      y: 0,
+      toJSON: () => undefined,
+    });
+
+    const plainWheelEvent = new WheelEvent('wheel', {
+      bubbles: true,
+      cancelable: true,
+      deltaY: 40,
+    });
+    stage.dispatchEvent(plainWheelEvent);
+
+    const zoomWheelEvent = new WheelEvent('wheel', {
+      bubbles: true,
+      cancelable: true,
+      ctrlKey: true,
+      deltaY: -40,
+    });
+    stage.dispatchEvent(zoomWheelEvent);
+
+    expect(plainWheelEvent.defaultPrevented).toBe(false);
+    expect(zoomWheelEvent.defaultPrevented).toBe(true);
+
+    wrapper.unmount();
+  });
+
+  it('shows grab and grabbing cursors for panning states', async () => {
+    const controller = new EditorController(createDocument());
+
+    const wrapper = mount(CanvasViewport, {
+      props: {
+        controller,
+        document: controller.getSnapshot(),
+        tool: 'hand',
+        viewportState: controller.getViewportState(),
+      },
+      global: {
+        stubs: {
+          Panel: {
+            template: '<div><slot /></div>',
+          },
+        },
+      },
+    });
+
+    expect(wrapper.get('[aria-label="Canvas stage"]').classes()).toContain('cursor-grab');
+
+    await wrapper.setProps({
+      viewportState: {
+        ...controller.getViewportState(),
+        isPanning: true,
+        panSource: 'hand-tool',
+      },
+    });
+
+    expect(wrapper.get('[aria-label="Canvas stage"]').classes()).toContain('cursor-grabbing');
     wrapper.unmount();
   });
 

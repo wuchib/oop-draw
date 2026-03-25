@@ -2,7 +2,7 @@
 import { CanvasRenderer, type EditorController } from '@oop-draw/editor-core';
 import type { CanvasDocument, PointerInput, ViewportState, WheelInput } from '@oop-draw/shared';
 import { Panel } from '@oop-draw/ui';
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 const props = defineProps<{
   controller: EditorController;
@@ -14,6 +14,17 @@ const props = defineProps<{
 const containerRef = ref<HTMLElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const spacePressed = ref(false);
+const stageCursorClass = computed(() => {
+  if (props.viewportState.isPanning) {
+    return 'cursor-grabbing';
+  }
+
+  if (props.tool === 'hand' || spacePressed.value) {
+    return 'cursor-grab';
+  }
+
+  return 'cursor-default';
+});
 
 let renderer: CanvasRenderer | null = null;
 let resizeObserver: ResizeObserver | null = null;
@@ -71,6 +82,7 @@ function toWheelInput(event: WheelEvent): WheelInput {
   return {
     clientX: point.x,
     clientY: point.y,
+    deltaX: event.deltaX,
     deltaY: event.deltaY,
     ctrlKey: event.ctrlKey,
     metaKey: event.metaKey,
@@ -112,7 +124,10 @@ function handlePointerUp(event: PointerEvent): void {
 
 function handleWheel(event: WheelEvent): void {
   props.controller.handleWheel(toWheelInput(event));
-  event.preventDefault();
+
+  if (event.ctrlKey || event.metaKey) {
+    event.preventDefault();
+  }
 }
 
 function handleKeyDown(event: KeyboardEvent): void {
@@ -201,6 +216,7 @@ onUnmounted(() => {
       <div
         ref="containerRef"
         aria-label="Canvas stage"
+        :class="stageCursorClass"
         class="relative h-full min-h-[32rem] overflow-hidden rounded-[inherit] bg-[radial-gradient(circle_at_top_left,_rgba(29,78,216,0.12),_transparent_28%),linear-gradient(180deg,_color-mix(in_srgb,var(--od-color-surface)_82%,white)_0%,var(--od-color-surface-muted)_100%)] outline-none"
         tabindex="0"
         @pointerdown="handlePointerDown"

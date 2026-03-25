@@ -116,6 +116,14 @@ export class EditorController {
   }
 
   handleWheel(input: WheelInput): boolean {
+    if (!input.ctrlKey && !input.metaKey) {
+      const zoom = this.camera.getState().zoom;
+      this.camera.panBy(-input.deltaX / zoom, -input.deltaY / zoom);
+      this.syncCameraToDocument();
+      this.emitChange();
+      return true;
+    }
+
     const nextZoom = this.constraints.getNextZoomStep(this.camera.getState().zoom, input.deltaY);
     this.camera.zoomAt({ x: input.clientX, y: input.clientY }, nextZoom, this.viewportSize);
     this.syncCameraToDocument();
@@ -160,6 +168,16 @@ export class EditorController {
   resetZoom(center: Point = getViewportCenter(this.viewportSize)): void {
     this.camera.zoomAt(center, 1, this.viewportSize);
     this.syncCameraToDocument();
+    this.emitChange();
+  }
+
+  setGridEnabled(enabled: boolean): void {
+    if (this.document.appState.gridEnabled === enabled) {
+      return;
+    }
+
+    this.document.appState.gridEnabled = enabled;
+    this.document.metadata.updatedAt = new Date().toISOString();
     this.emitChange();
   }
 

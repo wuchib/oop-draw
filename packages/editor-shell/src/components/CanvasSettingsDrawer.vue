@@ -3,10 +3,12 @@ import { Settings2 } from 'lucide-vue-next';
 
 defineProps<{
   showFooter: boolean;
+  showGrid: boolean;
 }>();
 
 defineEmits<{
   'update:showFooter': [value: boolean];
+  'update:showGrid': [value: boolean];
 }>();
 </script>
 
@@ -30,8 +32,19 @@ defineEmits<{
         @change="$emit('update:showFooter', ($event.target as HTMLInputElement).checked)"
       >
     </label>
-    <p class="text-xs text-text-muted">
-      More global options will be added here as the canvas runtime grows.
-    </p>
+    <label class="flex items-center justify-between gap-4 rounded-lg border border-border bg-surface px-4 py-3">
+      <div>
+        <p class="text-sm font-medium text-text">Show canvas grid</p>
+        <p class="mt-1 text-xs text-text-muted">
+          Toggle the background grid overlay used as a canvas alignment reference.
+        </p>
+      </div>
+      <input
+        :checked="showGrid"
+        class="h-4 w-4 rounded border-border text-accent focus:ring-accent/45"
+        type="checkbox"
+        @change="$emit('update:showGrid', ($event.target as HTMLInputElement).checked)"
+      >
+    </label>
   </div>
 </template>
