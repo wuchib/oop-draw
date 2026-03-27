@@ -5,7 +5,15 @@ import { Camera } from '../camera/camera';
 import { getSceneElements } from '../scene/scene';
 import type { EditorPresentationState } from '../scene/presentation';
 import { getSingleSelectionId } from '../selection/selection';
-import { getElementBounds, getHandlePoints, getStableRoughSeed } from '../scene/element-interaction';
+import {
+  getElementBounds,
+  getStableRoughSeed,
+  SELECTION_OUTLINE_SCREEN_PADDING,
+} from '../scene/element-interaction';
+
+const SELECTION_STROKE_COLOR = '#3872e8';
+const SELECTION_FILL_COLOR = 'rgba(56, 114, 232, 0.18)';
+const SELECTION_FILL_COLOR_STRONG = 'rgba(56, 114, 232, 0.45)';
 
 export class CanvasRenderer {
   private readonly context: CanvasRenderingContext2D;
@@ -155,32 +163,120 @@ export class CanvasRenderer {
   }
 
   private drawSelectionOutline(element: ShapeElement): void {
+    if (element.type === 'arrow') {
+      this.drawArrowSelectionOutline(element);
+      return;
+    }
+
+    this.drawBoxSelectionOutline(element);
+  }
+
+  private drawBoxSelectionOutline(element: Exclude<ShapeElement, { type: 'arrow' }>): void {
     const transformer = this.camera.getTransformer({ width: this.width, height: this.height });
     const bounds = getElementBounds(element);
     const topLeft = transformer.worldToScreen({ x: bounds.left, y: bounds.top });
     const bottomRight = transformer.worldToScreen({ x: bounds.right, y: bounds.bottom });
-    const width = bottomRight.x - topLeft.x;
-    const height = bottomRight.y - topLeft.y;
+    const outlineTopLeft = {
+      x: topLeft.x - SELECTION_OUTLINE_SCREEN_PADDING,
+      y: topLeft.y - SELECTION_OUTLINE_SCREEN_PADDING,
+    };
+    const outlineBottomRight = {
+      x: bottomRight.x + SELECTION_OUTLINE_SCREEN_PADDING,
+      y: bottomRight.y + SELECTION_OUTLINE_SCREEN_PADDING,
+    };
+    const width = outlineBottomRight.x - outlineTopLeft.x;
+    const height = outlineBottomRight.y - outlineTopLeft.y;
+    const topCenterX = outlineTopLeft.x + width / 2;
+    const rotationHandleY = outlineTopLeft.y - 18;
+    const cornerSize = 12;
+    const cornerOffset = cornerSize / 2;
+    const edgeGap = cornerOffset + 2;
 
     this.context.save();
-    this.context.strokeStyle = '#2563eb';
+    this.context.strokeStyle = SELECTION_STROKE_COLOR;
     this.context.lineWidth = 1.5;
-    this.context.setLineDash([6, 4]);
-    this.context.strokeRect(topLeft.x, topLeft.y, width, height);
-    this.context.setLineDash([]);
+    this.context.beginPath();
+    this.context.moveTo(outlineTopLeft.x + edgeGap, outlineTopLeft.y);
+    this.context.lineTo(outlineBottomRight.x - edgeGap, outlineTopLeft.y);
+    this.context.moveTo(outlineBottomRight.x, outlineTopLeft.y + edgeGap);
+    this.context.lineTo(outlineBottomRight.x, outlineBottomRight.y - edgeGap);
+    this.context.moveTo(outlineTopLeft.x + edgeGap, outlineBottomRight.y);
+    this.context.lineTo(outlineBottomRight.x - edgeGap, outlineBottomRight.y);
+    this.context.moveTo(outlineTopLeft.x, outlineTopLeft.y + edgeGap);
+    this.context.lineTo(outlineTopLeft.x, outlineBottomRight.y - edgeGap);
+    this.context.stroke();
 
-    for (const handle of getHandlePoints(element)) {
-      const point = transformer.worldToScreen(handle.point);
-      this.context.beginPath();
-      this.context.fillStyle = '#ffffff';
-      this.context.strokeStyle = '#2563eb';
-      this.context.lineWidth = 1.5;
-      this.context.arc(point.x, point.y, 5, 0, Math.PI * 2);
-      this.context.fill();
-      this.context.stroke();
-    }
+    this.drawSquareHandle(outlineTopLeft.x, outlineTopLeft.y, cornerSize, cornerOffset);
+    this.drawSquareHandle(outlineBottomRight.x, outlineTopLeft.y, cornerSize, cornerOffset);
+    this.drawSquareHandle(outlineBottomRight.x, outlineBottomRight.y, cornerSize, cornerOffset);
+    this.drawSquareHandle(outlineTopLeft.x, outlineBottomRight.y, cornerSize, cornerOffset);
+
+    this.context.beginPath();
+    this.context.fillStyle = SELECTION_FILL_COLOR;
+    this.context.strokeStyle = SELECTION_STROKE_COLOR;
+    this.context.lineWidth = 2;
+    this.context.arc(topCenterX, rotationHandleY, 7, 0, Math.PI * 2);
+    this.context.fill();
+    this.context.stroke();
 
     this.context.restore();
+  }
+
+  private drawArrowSelectionOutline(element: Extract<ShapeElement, { type: 'arrow' }>): void {
+    const transformer = this.camera.getTransformer({ width: this.width, height: this.height });
+    const start = transformer.worldToScreen({ x: element.x, y: element.y });
+    const end = transformer.worldToScreen({ x: element.endX, y: element.endY });
+    const midpoint = {
+      x: (start.x + end.x) / 2,
+      y: (start.y + end.y) / 2,
+    };
+
+    this.context.save();
+
+    this.context.beginPath();
+    this.context.fillStyle = SELECTION_FILL_COLOR;
+    this.context.strokeStyle = SELECTION_STROKE_COLOR;
+    this.context.lineWidth = 2;
+    this.context.arc(start.x, start.y, 8, 0, Math.PI * 2);
+    this.context.fill();
+    this.context.stroke();
+
+    this.context.beginPath();
+    this.context.arc(end.x, end.y, 8, 0, Math.PI * 2);
+    this.context.fill();
+    this.context.stroke();
+
+    this.context.beginPath();
+    this.context.fillStyle = SELECTION_FILL_COLOR_STRONG;
+    this.context.arc(midpoint.x, midpoint.y, 8, 0, Math.PI * 2);
+    this.context.fill();
+
+    this.context.restore();
+  }
+
+  private drawSquareHandle(x: number, y: number, size: number, offset: number): void {
+    this.context.fillStyle = SELECTION_FILL_COLOR;
+    this.context.strokeStyle = SELECTION_STROKE_COLOR;
+    this.context.lineWidth = 2;
+    this.drawRoundedRect(x - offset, y - offset, size, size, 4);
+    this.context.fill();
+    this.context.stroke();
+  }
+
+  private drawRoundedRect(x: number, y: number, width: number, height: number, radius: number): void {
+    const clampedRadius = Math.min(radius, width / 2, height / 2);
+
+    this.context.beginPath();
+    this.context.moveTo(x + clampedRadius, y);
+    this.context.lineTo(x + width - clampedRadius, y);
+    this.context.arcTo(x + width, y, x + width, y + clampedRadius, clampedRadius);
+    this.context.lineTo(x + width, y + height - clampedRadius);
+    this.context.arcTo(x + width, y + height, x + width - clampedRadius, y + height, clampedRadius);
+    this.context.lineTo(x + clampedRadius, y + height);
+    this.context.arcTo(x, y + height, x, y + height - clampedRadius, clampedRadius);
+    this.context.lineTo(x, y + clampedRadius);
+    this.context.arcTo(x, y, x + clampedRadius, y, clampedRadius);
+    this.context.closePath();
   }
 
   private drawGrid(): void {

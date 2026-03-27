@@ -27,6 +27,7 @@ import {
   isRenderableShape,
   resizeArrowElement,
   resizeBoxElement,
+  SELECTION_OUTLINE_SCREEN_PADDING,
   translateElement,
   type ArrowHandle,
   type BoxHandle,
@@ -45,6 +46,12 @@ interface DrawSession {
   startWorld: Point;
 }
 
+interface ClickSelectionSession {
+  kind: 'click-select';
+  pointerId: number;
+  elementId: string | null;
+}
+
 interface MoveSession {
   kind: 'move';
   pointerId: number;
@@ -58,6 +65,7 @@ interface ResizeBoxSession {
   pointerId: number;
   elementId: string;
   handle: BoxHandle;
+  startWorld: Point;
   startElement: RectangleElement | EllipseElement;
 }
 
@@ -86,7 +94,11 @@ export class EditorController {
   private viewportSize: Size = { width: 1, height: 1 };
   private activePanSession: PanSession | null = null;
   private activeDrawSession: DrawSession | null = null;
+  private activeClickSelectionSession: ClickSelectionSession | null = null;
   private activeTransformSession: TransformSession | null = null;
+  private hoveredHandle: ElementHandleTarget | null = null;
+  private isHoveringSelectedElementBody = false;
+  private isHoveringAnyShape = false;
   private draftElement: ShapeElement | null = null;
   private readonly selection: SelectionState = createSelection();
   private readonly pressedKeys = new Set<string>();
@@ -116,7 +128,11 @@ export class EditorController {
     this.selection.ids = [];
     this.draftElement = null;
     this.activeDrawSession = null;
+    this.activeClickSelectionSession = null;
     this.activeTransformSession = null;
+    this.hoveredHandle = null;
+    this.isHoveringSelectedElementBody = false;
+    this.isHoveringAnyShape = false;
     this.syncCameraToDocument();
     this.emitChange();
   }
@@ -125,7 +141,11 @@ export class EditorController {
     this.tool = tool;
     this.draftElement = null;
     this.activeDrawSession = null;
+    this.activeClickSelectionSession = null;
     this.activeTransformSession = null;
+    this.hoveredHandle = null;
+    this.isHoveringSelectedElementBody = false;
+    this.isHoveringAnyShape = false;
     this.emitChange();
   }
 
@@ -163,6 +183,10 @@ export class EditorController {
     const worldPoint = this.toWorldPoint(input.clientX, input.clientY);
 
     if (this.isDrawTool(this.tool)) {
+      this.activeClickSelectionSession = null;
+      this.hoveredHandle = null;
+      this.isHoveringSelectedElementBody = false;
+      this.isHoveringAnyShape = false;
       this.activeDrawSession = {
         kind: 'draw',
         pointerId: input.pointerId,
@@ -190,6 +214,10 @@ export class EditorController {
       const handleTarget = hitTestHandle(selectedElement, worldPoint, this.camera.getState().zoom);
 
       if (handleTarget) {
+        this.activeClickSelectionSession = null;
+        this.hoveredHandle = handleTarget;
+        this.isHoveringSelectedElementBody = false;
+        this.isHoveringAnyShape = true;
         this.activeTransformSession = this.createResizeSession(input.pointerId, selectedElement, handleTarget);
         this.emitChange();
         return true;
@@ -197,14 +225,38 @@ export class EditorController {
     }
 
     const hitElement = this.findTopmostShapeAt(worldPoint);
+    const selectedElementId = getSingleSelectionId(this.selection);
 
     if (!hitElement) {
-      this.selection.ids = [];
+      this.hoveredHandle = null;
+      this.isHoveringSelectedElementBody = false;
+      this.isHoveringAnyShape = false;
+      this.activeClickSelectionSession = {
+        kind: 'click-select',
+        pointerId: input.pointerId,
+        elementId: null,
+      };
       this.emitChange();
-      return false;
+      return true;
     }
 
-    this.selection.ids = [hitElement.id];
+    if (hitElement.id !== selectedElementId) {
+      this.hoveredHandle = null;
+      this.isHoveringSelectedElementBody = false;
+      this.isHoveringAnyShape = true;
+      this.activeClickSelectionSession = {
+        kind: 'click-select',
+        pointerId: input.pointerId,
+        elementId: hitElement.id,
+      };
+      this.emitChange();
+      return true;
+    }
+
+    this.activeClickSelectionSession = null;
+    this.hoveredHandle = null;
+    this.isHoveringSelectedElementBody = false;
+    this.isHoveringAnyShape = true;
     this.activeTransformSession = {
       kind: 'move',
       pointerId: input.pointerId,
@@ -237,8 +289,12 @@ export class EditorController {
       return true;
     }
 
+    if (this.activeClickSelectionSession) {
+      return true;
+    }
+
     if (!this.activeTransformSession) {
-      return false;
+      return this.updateHoverState(worldPoint);
     }
 
     switch (this.activeTransformSession.kind) {
@@ -254,7 +310,12 @@ export class EditorController {
       case 'resize-box': {
         this.updateElementById(
           this.activeTransformSession.elementId,
-          resizeBoxElement(this.activeTransformSession.startElement, this.activeTransformSession.handle, worldPoint),
+          resizeBoxElement(
+            this.activeTransformSession.startElement,
+            this.activeTransformSession.handle,
+            this.activeTransformSession.startWorld,
+            worldPoint,
+          ),
         );
         break;
       }
@@ -284,17 +345,37 @@ export class EditorController {
       if (this.draftElement && isRenderableShape(this.draftElement)) {
         this.document.elements = [...this.document.elements, this.draftElement];
         this.selection.ids = [this.draftElement.id];
+        this.tool = 'select';
         this.touchDocument();
       }
 
       this.activeDrawSession = null;
+      this.activeClickSelectionSession = null;
+      this.hoveredHandle = null;
+      this.isHoveringSelectedElementBody = false;
+      this.isHoveringAnyShape = false;
       this.draftElement = null;
+      this.emitChange();
+      return true;
+    }
+
+    if (this.activeClickSelectionSession) {
+      this.selection.ids = this.activeClickSelectionSession.elementId
+        ? [this.activeClickSelectionSession.elementId]
+        : [];
+      this.activeClickSelectionSession = null;
+      this.hoveredHandle = null;
+      this.isHoveringSelectedElementBody = false;
+      this.isHoveringAnyShape = false;
       this.emitChange();
       return true;
     }
 
     if (this.activeTransformSession) {
       this.activeTransformSession = null;
+      this.hoveredHandle = null;
+      this.isHoveringSelectedElementBody = false;
+      this.isHoveringAnyShape = false;
       this.emitChange();
       return true;
     }
@@ -410,6 +491,7 @@ export class EditorController {
       isDrawing: this.activeDrawSession !== null,
       selectedElementId,
       interaction,
+      cursor: this.getViewportCursor(),
     };
   }
 
@@ -475,8 +557,44 @@ export class EditorController {
       pointerId,
       elementId: element.id,
       handle: target.handle as BoxHandle,
+      startWorld: this.toWorldPointFromElementHandleTarget(element, target),
       startElement: { ...element } as RectangleElement | EllipseElement,
     };
+  }
+
+  private toWorldPointFromElementHandleTarget(element: ShapeElement, target: ElementHandleTarget): Point {
+    if (element.type === 'arrow') {
+      return target.handle === 'start'
+        ? { x: element.x, y: element.y }
+        : { x: element.endX, y: element.endY };
+    }
+
+    const padding = SELECTION_OUTLINE_SCREEN_PADDING / this.camera.getState().zoom;
+    const bounds = {
+      left: element.x - padding,
+      top: element.y - padding,
+      right: element.x + element.width + padding,
+      bottom: element.y + element.height + padding,
+    };
+
+    switch (target.handle) {
+      case 'n':
+        return { x: (bounds.left + bounds.right) / 2, y: bounds.top };
+      case 'ne':
+        return { x: bounds.right, y: bounds.top };
+      case 'e':
+        return { x: bounds.right, y: (bounds.top + bounds.bottom) / 2 };
+      case 'se':
+        return { x: bounds.right, y: bounds.bottom };
+      case 's':
+        return { x: (bounds.left + bounds.right) / 2, y: bounds.bottom };
+      case 'sw':
+        return { x: bounds.left, y: bounds.bottom };
+      case 'w':
+        return { x: bounds.left, y: (bounds.top + bounds.bottom) / 2 };
+      case 'nw':
+        return { x: bounds.left, y: bounds.top };
+    }
   }
 
   private findTopmostShapeAt(worldPoint: Point): ShapeElement | null {
@@ -501,6 +619,111 @@ export class EditorController {
     this.document.elements = this.document.elements.map((element) =>
       element.id === elementId ? nextElement : element,
     );
+  }
+
+  private updateHoverState(worldPoint: Point): boolean {
+    if (this.tool !== 'select') {
+      return false;
+    }
+
+    const selectedElement = this.getSelectedShapeElement();
+    const zoom = this.camera.getState().zoom;
+    const nextHoveredHandle = selectedElement ? hitTestHandle(selectedElement, worldPoint, zoom) : null;
+    const nextHoveringSelectedElementBody =
+      selectedElement !== null && nextHoveredHandle === null && hitTestElement(selectedElement, worldPoint, zoom);
+    const nextHoveringAnyShape = this.findTopmostShapeAt(worldPoint) !== null;
+
+    const didChange =
+      !this.isSameHandleTarget(this.hoveredHandle, nextHoveredHandle) ||
+      this.isHoveringSelectedElementBody !== nextHoveringSelectedElementBody ||
+      this.isHoveringAnyShape !== nextHoveringAnyShape;
+
+    this.hoveredHandle = nextHoveredHandle;
+    this.isHoveringSelectedElementBody = nextHoveringSelectedElementBody;
+    this.isHoveringAnyShape = nextHoveringAnyShape;
+
+    if (didChange) {
+      this.emitChange();
+    }
+
+    return didChange;
+  }
+
+  private isSameHandleTarget(a: ElementHandleTarget | null, b: ElementHandleTarget | null): boolean {
+    if (a === b) {
+      return true;
+    }
+
+    if (!a || !b) {
+      return false;
+    }
+
+    return a.kind === b.kind && a.handle === b.handle;
+  }
+
+  private getViewportCursor(): ViewportState['cursor'] {
+    if (this.activePanSession) {
+      return 'grabbing';
+    }
+
+    if (this.activeDrawSession) {
+      return 'crosshair';
+    }
+
+    if (this.activeTransformSession?.kind === 'move') {
+      return 'move';
+    }
+
+    if (this.activeTransformSession?.kind === 'resize-box') {
+      return this.getBoxHandleCursor(this.activeTransformSession.handle);
+    }
+
+    if (this.activeTransformSession?.kind === 'resize-arrow') {
+      return 'grabbing';
+    }
+
+    if (this.hoveredHandle?.kind === 'box') {
+      return this.getBoxHandleCursor(this.hoveredHandle.handle);
+    }
+
+    if (this.hoveredHandle?.kind === 'arrow') {
+      return 'grab';
+    }
+
+    if (this.isHoveringSelectedElementBody) {
+      return 'move';
+    }
+
+    if (this.tool === 'select' && this.isHoveringAnyShape) {
+      return 'move';
+    }
+
+    if (this.tool === 'hand' || this.pressedKeys.has('Space')) {
+      return 'grab';
+    }
+
+    if (this.isDrawTool(this.tool)) {
+      return 'crosshair';
+    }
+
+    return 'default';
+  }
+
+  private getBoxHandleCursor(handle: BoxHandle): ViewportState['cursor'] {
+    switch (handle) {
+      case 'n':
+      case 's':
+        return 'ns-resize';
+      case 'e':
+      case 'w':
+        return 'ew-resize';
+      case 'ne':
+      case 'sw':
+        return 'nesw-resize';
+      case 'nw':
+      case 'se':
+        return 'nwse-resize';
+    }
   }
 
   private touchDocument(): void {

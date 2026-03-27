@@ -7,7 +7,7 @@ import type {
   ShapeElement,
 } from '@oop-draw/shared';
 
-export type BoxHandle = 'nw' | 'ne' | 'se' | 'sw';
+export type BoxHandle = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
 export type ArrowHandle = 'start' | 'end';
 export type ElementHandleTarget =
   | { kind: 'box'; handle: BoxHandle }
@@ -22,10 +22,11 @@ export interface RectBounds {
 
 export const HANDLE_SCREEN_RADIUS = 7;
 export const LINE_HIT_SCREEN_TOLERANCE = 8;
+export const SELECTION_OUTLINE_SCREEN_PADDING = 10;
 
 export function createDefaultShapeStyle() {
   return {
-    strokeColor: '#1d4ed8',
+    strokeColor: '#000000',
     strokeWidth: 2,
     fillColor: 'rgba(59, 130, 246, 0.12)',
   };
@@ -124,11 +125,11 @@ export function translateElement<T extends CanvasElement>(element: T, deltaX: nu
 export function resizeBoxElement<T extends RectangleElement | EllipseElement>(
   element: T,
   handle: BoxHandle,
+  startPoint: Point,
   nextPoint: Point,
 ): T {
   const bounds = getElementBounds(element);
-  const anchor = getBoxAnchor(bounds, handle);
-  const normalized = normalizeRect(anchor, nextPoint);
+  const normalized = normalizeResizeBounds(bounds, handle, startPoint, nextPoint);
 
   return {
     ...element,
@@ -194,10 +195,14 @@ export function getHandlePoints(element: ShapeElement): Array<{ target: ElementH
 
   const bounds = getElementBounds(element);
   return [
-    { target: { kind: 'box', handle: 'nw' }, point: { x: bounds.left, y: bounds.top } },
+    { target: { kind: 'box', handle: 'n' }, point: { x: (bounds.left + bounds.right) / 2, y: bounds.top } },
     { target: { kind: 'box', handle: 'ne' }, point: { x: bounds.right, y: bounds.top } },
+    { target: { kind: 'box', handle: 'e' }, point: { x: bounds.right, y: (bounds.top + bounds.bottom) / 2 } },
     { target: { kind: 'box', handle: 'se' }, point: { x: bounds.right, y: bounds.bottom } },
+    { target: { kind: 'box', handle: 's' }, point: { x: (bounds.left + bounds.right) / 2, y: bounds.bottom } },
     { target: { kind: 'box', handle: 'sw' }, point: { x: bounds.left, y: bounds.bottom } },
+    { target: { kind: 'box', handle: 'w' }, point: { x: bounds.left, y: (bounds.top + bounds.bottom) / 2 } },
+    { target: { kind: 'box', handle: 'nw' }, point: { x: bounds.left, y: bounds.top } },
   ];
 }
 
@@ -206,6 +211,10 @@ export function hitTestHandle(
   point: Point,
   zoom: number,
 ): ElementHandleTarget | null {
+  if (element.type !== 'arrow') {
+    return hitTestBoxHandle(element, point, zoom);
+  }
+
   const worldRadius = HANDLE_SCREEN_RADIUS / zoom;
 
   for (const handle of getHandlePoints(element)) {
@@ -217,17 +226,116 @@ export function hitTestHandle(
   return null;
 }
 
-function getBoxAnchor(bounds: RectBounds, handle: BoxHandle): Point {
-  switch (handle) {
-    case 'nw':
-      return { x: bounds.right, y: bounds.bottom };
-    case 'ne':
-      return { x: bounds.left, y: bounds.bottom };
-    case 'se':
-      return { x: bounds.left, y: bounds.top };
-    case 'sw':
-      return { x: bounds.right, y: bounds.top };
+function hitTestBoxHandle(
+  element: RectangleElement | EllipseElement,
+  point: Point,
+  zoom: number,
+): ElementHandleTarget | null {
+  const bounds = getExpandedBoxBounds(element, zoom);
+  const worldRadius = HANDLE_SCREEN_RADIUS / zoom;
+  const handlePoints: Array<{ handle: BoxHandle; point: Point }> = [
+    { handle: 'nw', point: { x: bounds.left, y: bounds.top } },
+    { handle: 'ne', point: { x: bounds.right, y: bounds.top } },
+    { handle: 'se', point: { x: bounds.right, y: bounds.bottom } },
+    { handle: 'sw', point: { x: bounds.left, y: bounds.bottom } },
+  ];
+
+  for (const handlePoint of handlePoints) {
+    if (Math.hypot(handlePoint.point.x - point.x, handlePoint.point.y - point.y) <= worldRadius) {
+      return { kind: 'box', handle: handlePoint.handle };
+    }
   }
+
+  const nearLeft = Math.abs(point.x - bounds.left) <= worldRadius;
+  const nearRight = Math.abs(point.x - bounds.right) <= worldRadius;
+  const nearTop = Math.abs(point.y - bounds.top) <= worldRadius;
+  const nearBottom = Math.abs(point.y - bounds.bottom) <= worldRadius;
+  const insideHorizontal = point.x >= bounds.left - worldRadius && point.x <= bounds.right + worldRadius;
+  const insideVertical = point.y >= bounds.top - worldRadius && point.y <= bounds.bottom + worldRadius;
+
+  if (!insideHorizontal || !insideVertical) {
+    return null;
+  }
+
+  if (!nearLeft && !nearRight && !nearTop && !nearBottom) {
+    return null;
+  }
+
+  if (nearTop) {
+    return { kind: 'box', handle: 'n' };
+  }
+
+  if (nearBottom) {
+    return { kind: 'box', handle: 's' };
+  }
+
+  if (nearLeft) {
+    return { kind: 'box', handle: 'w' };
+  }
+
+  return { kind: 'box', handle: 'e' };
+}
+
+function getExpandedBoxBounds(
+  element: RectangleElement | EllipseElement,
+  zoom: number,
+): RectBounds {
+  const bounds = getElementBounds(element);
+  const worldPadding = SELECTION_OUTLINE_SCREEN_PADDING / zoom;
+
+  return {
+    left: bounds.left - worldPadding,
+    top: bounds.top - worldPadding,
+    right: bounds.right + worldPadding,
+    bottom: bounds.bottom + worldPadding,
+  };
+}
+
+function normalizeResizeBounds(
+  bounds: RectBounds,
+  handle: BoxHandle,
+  startPoint: Point,
+  nextPoint: Point,
+): RectBounds {
+  const deltaX = nextPoint.x - startPoint.x;
+  const deltaY = nextPoint.y - startPoint.y;
+  let left = bounds.left;
+  let top = bounds.top;
+  let right = bounds.right;
+  let bottom = bounds.bottom;
+
+  switch (handle) {
+    case 'n':
+      top += deltaY;
+      break;
+    case 'ne':
+      top += deltaY;
+      right += deltaX;
+      break;
+    case 'e':
+      right += deltaX;
+      break;
+    case 'se':
+      right += deltaX;
+      bottom += deltaY;
+      break;
+    case 's':
+      bottom += deltaY;
+      break;
+    case 'sw':
+      left += deltaX;
+      bottom += deltaY;
+      break;
+    case 'w':
+      left += deltaX;
+      break;
+    case 'nw':
+      left += deltaX;
+      top += deltaY;
+      break;
+  }
+
+  return normalizeRect({ x: left, y: top }, { x: right, y: bottom });
 }
 
 function distanceToSegment(point: Point, start: Point, end: Point): number {

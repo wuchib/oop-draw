@@ -15,23 +15,19 @@ const containerRef = ref<HTMLElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const spacePressed = ref(false);
 const stageCursorClass = computed(() => {
-  if (props.viewportState.isPanning) {
-    return 'cursor-grabbing';
-  }
+  const cursorClassMap: Record<ViewportState['cursor'], string> = {
+    default: 'cursor-default',
+    grab: 'cursor-grab',
+    grabbing: 'cursor-grabbing',
+    crosshair: 'cursor-crosshair',
+    move: 'cursor-move',
+    'ew-resize': 'cursor-ew-resize',
+    'ns-resize': 'cursor-ns-resize',
+    'nesw-resize': 'cursor-nesw-resize',
+    'nwse-resize': 'cursor-nwse-resize',
+  };
 
-  if (props.viewportState.interaction === 'moving' || props.viewportState.interaction === 'resizing') {
-    return 'cursor-grabbing';
-  }
-
-  if (props.viewportState.isDrawing || props.tool === 'rectangle' || props.tool === 'ellipse' || props.tool === 'arrow') {
-    return 'cursor-crosshair';
-  }
-
-  if (props.tool === 'hand' || spacePressed.value) {
-    return 'cursor-grab';
-  }
-
-  return 'cursor-default';
+  return cursorClassMap[props.viewportState.cursor];
 });
 
 let renderer: CanvasRenderer | null = null;

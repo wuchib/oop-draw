@@ -180,7 +180,10 @@ describe('CanvasViewport', () => {
         controller,
         document: controller.getSnapshot(),
         tool: 'hand',
-        viewportState: controller.getViewportState(),
+        viewportState: {
+          ...controller.getViewportState(),
+          cursor: 'grab',
+        },
       },
       global: {
         stubs: {
@@ -198,6 +201,7 @@ describe('CanvasViewport', () => {
         ...controller.getViewportState(),
         isPanning: true,
         panSource: 'hand-tool',
+        cursor: 'grabbing',
       },
     });
 
@@ -217,6 +221,7 @@ describe('CanvasViewport', () => {
           ...controller.getViewportState(),
           isDrawing: true,
           interaction: 'drawing',
+          cursor: 'crosshair',
         },
       },
       global: {
@@ -229,6 +234,81 @@ describe('CanvasViewport', () => {
     });
 
     expect(wrapper.get('[aria-label="Canvas stage"]').classes()).toContain('cursor-crosshair');
+    wrapper.unmount();
+  });
+
+  it('maps move and resize cursor states to stage classes', async () => {
+    const controller = new EditorController(createDocument());
+
+    const wrapper = mount(CanvasViewport, {
+      props: {
+        controller,
+        document: controller.getSnapshot(),
+        tool: 'select',
+        viewportState: {
+          ...controller.getViewportState(),
+          cursor: 'move',
+        },
+      },
+      global: {
+        stubs: {
+          Panel: {
+            template: '<div><slot /></div>',
+          },
+        },
+      },
+    });
+
+    expect(wrapper.get('[aria-label="Canvas stage"]').classes()).toContain('cursor-move');
+
+    await wrapper.setProps({
+      viewportState: {
+        ...controller.getViewportState(),
+        cursor: 'ew-resize',
+      },
+    });
+    expect(wrapper.get('[aria-label="Canvas stage"]').classes()).toContain('cursor-ew-resize');
+
+    await wrapper.setProps({
+      viewportState: {
+        ...controller.getViewportState(),
+        cursor: 'ns-resize',
+      },
+    });
+    expect(wrapper.get('[aria-label="Canvas stage"]').classes()).toContain('cursor-ns-resize');
+
+    await wrapper.setProps({
+      viewportState: {
+        ...controller.getViewportState(),
+        cursor: 'nesw-resize',
+      },
+    });
+    expect(wrapper.get('[aria-label="Canvas stage"]').classes()).toContain('cursor-nesw-resize');
+
+    await wrapper.setProps({
+      viewportState: {
+        ...controller.getViewportState(),
+        cursor: 'nwse-resize',
+      },
+    });
+    expect(wrapper.get('[aria-label="Canvas stage"]').classes()).toContain('cursor-nwse-resize');
+
+    await wrapper.setProps({
+      viewportState: {
+        ...controller.getViewportState(),
+        cursor: 'grab',
+      },
+    });
+    expect(wrapper.get('[aria-label="Canvas stage"]').classes()).toContain('cursor-grab');
+
+    await wrapper.setProps({
+      viewportState: {
+        ...controller.getViewportState(),
+        cursor: 'grabbing',
+      },
+    });
+    expect(wrapper.get('[aria-label="Canvas stage"]').classes()).toContain('cursor-grabbing');
+
     wrapper.unmount();
   });
 

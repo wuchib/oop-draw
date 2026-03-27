@@ -19,6 +19,7 @@ import { Camera } from '../camera/camera';
 import { createDocument } from '../document/createDocument';
 
 interface MockContext {
+  arcTo: ReturnType<typeof vi.fn>;
   arc: ReturnType<typeof vi.fn>;
   beginPath: ReturnType<typeof vi.fn>;
   clearRect: ReturnType<typeof vi.fn>;
@@ -36,12 +37,15 @@ interface MockContext {
   globalAlpha: number;
   lineWidth: number;
   strokeStyle: string;
+  closePath: ReturnType<typeof vi.fn>;
 }
 
 function createMockContext(): MockContext {
   return {
+    arcTo: vi.fn(),
     arc: vi.fn(),
     beginPath: vi.fn(),
+    closePath: vi.fn(),
     clearRect: vi.fn(),
     fill: vi.fn(),
     fillRect: vi.fn(),
@@ -171,8 +175,41 @@ describe('CanvasRenderer', () => {
     });
 
     expect(roughEllipse).toHaveBeenCalled();
-    expect(context.strokeRect).toHaveBeenCalledTimes(1);
-    expect(context.arc).toHaveBeenCalledTimes(4);
+    expect(context.strokeRect).toHaveBeenCalledTimes(0);
+    expect(context.fillRect).toHaveBeenCalledTimes(1);
+    expect(context.arcTo).toHaveBeenCalled();
+    expect(context.moveTo).toHaveBeenCalled();
+    expect(context.lineTo).toHaveBeenCalled();
+    expect(context.arc).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders arrow selection endpoints and midpoint affordance', () => {
+    const context = createMockContext();
+    const renderer = new CanvasRenderer(createMockCanvas(context), new Camera({ x: 0, y: 0, zoom: 1 }));
+    const document = createDocument();
+
+    document.elements = [
+      {
+        id: 'arrow-1',
+        type: 'arrow',
+        x: 0,
+        y: 0,
+        endX: 80,
+        endY: 60,
+        strokeColor: '#1d4ed8',
+        strokeWidth: 2,
+        fillColor: 'rgba(59, 130, 246, 0.12)',
+      },
+    ];
+
+    renderer.resize(320, 240);
+    renderer.render(document, {
+      draftElement: null,
+      selection: { ids: ['arrow-1'] },
+    });
+
+    expect(context.arc).toHaveBeenCalledTimes(3);
+    expect(context.strokeRect).not.toHaveBeenCalled();
   });
 
   it('skips grid rendering when the grid is disabled', () => {
