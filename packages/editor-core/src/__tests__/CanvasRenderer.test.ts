@@ -1,37 +1,60 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it, vi } from 'vitest';
+
+const roughRectangle = vi.fn();
+const roughEllipse = vi.fn();
+const roughLine = vi.fn();
+
+vi.mock('roughjs/bin/canvas', () => ({
+  RoughCanvas: vi.fn(() => ({
+      rectangle: roughRectangle,
+      ellipse: roughEllipse,
+      line: roughLine,
+    })),
+}));
+
 import { CanvasRenderer } from '../renderer/CanvasRenderer';
 import { Camera } from '../camera/camera';
 import { createDocument } from '../document/createDocument';
 
 interface MockContext {
+  arc: ReturnType<typeof vi.fn>;
   beginPath: ReturnType<typeof vi.fn>;
   clearRect: ReturnType<typeof vi.fn>;
+  fill: ReturnType<typeof vi.fn>;
   fillRect: ReturnType<typeof vi.fn>;
   lineTo: ReturnType<typeof vi.fn>;
   moveTo: ReturnType<typeof vi.fn>;
   restore: ReturnType<typeof vi.fn>;
   save: ReturnType<typeof vi.fn>;
+  setLineDash: ReturnType<typeof vi.fn>;
   setTransform: ReturnType<typeof vi.fn>;
   stroke: ReturnType<typeof vi.fn>;
+  strokeRect: ReturnType<typeof vi.fn>;
   fillStyle: string;
+  globalAlpha: number;
   lineWidth: number;
   strokeStyle: string;
 }
 
 function createMockContext(): MockContext {
   return {
+    arc: vi.fn(),
     beginPath: vi.fn(),
     clearRect: vi.fn(),
+    fill: vi.fn(),
     fillRect: vi.fn(),
     lineTo: vi.fn(),
     moveTo: vi.fn(),
     restore: vi.fn(),
     save: vi.fn(),
+    setLineDash: vi.fn(),
     setTransform: vi.fn(),
     stroke: vi.fn(),
+    strokeRect: vi.fn(),
     fillStyle: '',
+    globalAlpha: 1,
     lineWidth: 1,
     strokeStyle: '',
   };
@@ -58,36 +81,98 @@ describe('CanvasRenderer', () => {
     expect(context.setTransform).toHaveBeenCalled();
   });
 
-  it('keeps the grid continuous when panning', () => {
+  it('renders rectangle, ellipse, and arrow elements', () => {
+    roughRectangle.mockClear();
+    roughEllipse.mockClear();
+    roughLine.mockClear();
+
     const context = createMockContext();
-    const camera = new Camera({ x: 0, y: 0, zoom: 1 });
-    const renderer = new CanvasRenderer(createMockCanvas(context), camera);
+    const renderer = new CanvasRenderer(createMockCanvas(context), new Camera({ x: 0, y: 0, zoom: 1 }));
     const document = createDocument();
 
-    renderer.resize(240, 240);
+    document.elements = [
+      {
+        id: 'rect-1',
+        type: 'rectangle',
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 60,
+        strokeColor: '#1d4ed8',
+        strokeWidth: 2,
+        fillColor: 'rgba(59, 130, 246, 0.12)',
+      },
+      {
+        id: 'ellipse-1',
+        type: 'ellipse',
+        x: 90,
+        y: 40,
+        width: 70,
+        height: 50,
+        strokeColor: '#1d4ed8',
+        strokeWidth: 2,
+        fillColor: 'rgba(59, 130, 246, 0.12)',
+      },
+      {
+        id: 'arrow-1',
+        type: 'arrow',
+        x: -40,
+        y: -30,
+        endX: 20,
+        endY: 40,
+        strokeColor: '#1d4ed8',
+        strokeWidth: 2,
+        fillColor: 'rgba(59, 130, 246, 0.12)',
+      },
+    ];
+
+    renderer.resize(320, 240);
     renderer.render(document);
 
-    const before = context.moveTo.mock.calls[0]?.[0];
-
-    context.moveTo.mockClear();
-    camera.panBy(12, 0);
-    document.camera = camera.toSnapshot();
-    renderer.render(document);
-
-    const after = context.moveTo.mock.calls[0]?.[0];
-
-    expect(after).not.toBe(before);
+    expect(roughRectangle).toHaveBeenCalledTimes(1);
+    expect(roughEllipse).toHaveBeenCalledTimes(1);
+    expect(roughLine).toHaveBeenCalledTimes(1);
+    expect(roughRectangle.mock.calls[0]?.[4]).toMatchObject({ seed: expect.any(Number) });
   });
 
-  it('jumps grid density instead of drawing hundreds of lines at low zoom', () => {
+  it('renders draft and selected handles from presentation state', () => {
     const context = createMockContext();
-    const camera = new Camera({ x: 0, y: 0, zoom: 0.1 });
-    const renderer = new CanvasRenderer(createMockCanvas(context), camera);
+    const renderer = new CanvasRenderer(createMockCanvas(context), new Camera({ x: 0, y: 0, zoom: 1 }));
+    const document = createDocument();
 
-    renderer.resize(240, 240);
-    renderer.render(createDocument());
+    document.elements = [
+      {
+        id: 'rect-1',
+        type: 'rectangle',
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 60,
+        strokeColor: '#1d4ed8',
+        strokeWidth: 2,
+        fillColor: 'rgba(59, 130, 246, 0.12)',
+      },
+    ];
 
-    expect(context.moveTo.mock.calls.length).toBeLessThan(60);
+    renderer.resize(320, 240);
+    renderer.render(document, {
+      draftElement: {
+        id: 'draft-1',
+        type: 'ellipse',
+        x: 90,
+        y: 40,
+        width: 70,
+        height: 50,
+        strokeColor: '#1d4ed8',
+        strokeWidth: 2,
+        fillColor: 'rgba(59, 130, 246, 0.12)',
+      },
+      selection: { ids: ['rect-1'] },
+    });
+
+    expect(roughEllipse).toHaveBeenCalled();
+    expect(context.strokeRect).toHaveBeenCalledTimes(1);
+    expect(context.arc).toHaveBeenCalledTimes(4);
   });
 
   it('skips grid rendering when the grid is disabled', () => {

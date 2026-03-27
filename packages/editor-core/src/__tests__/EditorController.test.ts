@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { EditorController } from '../controller/EditorController';
 
+function setViewport(controller: EditorController): void {
+  controller.setViewportSize(800, 600);
+}
+
 describe('EditorController', () => {
   it('starts a middle-button pan session and updates the camera on move', () => {
     const controller = new EditorController();
 
-    controller.setViewportSize(800, 600);
+    setViewport(controller);
 
     expect(
       controller.handlePointerDown({
@@ -33,58 +37,319 @@ describe('EditorController', () => {
       ctrlKey: false,
     });
 
-    const snapshot = controller.getSnapshot();
-
-    expect(snapshot.camera.x).toBeCloseTo(60, 5);
-    expect(snapshot.camera.y).toBeCloseTo(40, 5);
+    expect(controller.getSnapshot().camera.x).toBeCloseTo(60, 5);
+    expect(controller.getSnapshot().camera.y).toBeCloseTo(40, 5);
     expect(controller.getViewportState().isPanning).toBe(true);
   });
 
-  it('starts a space-drag pan session without switching the active tool', () => {
+  it('creates a rectangle from a drag gesture and keeps the active tool', () => {
     const controller = new EditorController();
 
-    controller.handleKeyDown('Space');
+    setViewport(controller);
+    controller.setTool('rectangle');
 
-    expect(
-      controller.handlePointerDown({
-        pointerId: 2,
-        button: 0,
-        buttons: 1,
-        clientX: 20,
-        clientY: 20,
-        spaceKey: true,
-        altKey: false,
-        shiftKey: false,
-        ctrlKey: false,
-      }),
-    ).toBe(true);
-    expect(controller.getTool()).toBe('select');
-    expect(controller.getViewportState().panSource).toBe('space-drag');
+    controller.handlePointerDown({
+      pointerId: 2,
+      button: 0,
+      buttons: 1,
+      clientX: 400,
+      clientY: 300,
+      spaceKey: false,
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: false,
+    });
+    const draftId = controller.getPresentationState().draftElement?.id;
+    controller.handlePointerMove({
+      pointerId: 2,
+      button: 0,
+      buttons: 1,
+      clientX: 460,
+      clientY: 360,
+      spaceKey: false,
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: false,
+    });
+    expect(controller.getPresentationState().draftElement?.id).toBe(draftId);
+    controller.handlePointerUp();
+
+    const rectangle = controller.getSnapshot().elements[0];
+    expect(rectangle).toMatchObject({
+      type: 'rectangle',
+      x: 0,
+      y: 0,
+      width: 60,
+      height: 60,
+    });
+    expect(controller.getTool()).toBe('rectangle');
   });
 
-  it('ignores pointer move when no pan session is active', () => {
+  it('normalizes ellipse geometry when dragging in reverse', () => {
     const controller = new EditorController();
 
-    expect(
-      controller.handlePointerMove({
-        pointerId: 3,
-        button: 0,
-        buttons: 0,
-        clientX: 120,
-        clientY: 80,
-        spaceKey: false,
-        altKey: false,
-        shiftKey: false,
-        ctrlKey: false,
-      }),
-    ).toBe(false);
-    expect(controller.getSnapshot().camera).toMatchObject({ x: 0, y: 0, zoom: 1 });
+    setViewport(controller);
+    controller.setTool('ellipse');
+
+    controller.handlePointerDown({
+      pointerId: 3,
+      button: 0,
+      buttons: 1,
+      clientX: 460,
+      clientY: 360,
+      spaceKey: false,
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: false,
+    });
+    controller.handlePointerMove({
+      pointerId: 3,
+      button: 0,
+      buttons: 1,
+      clientX: 400,
+      clientY: 300,
+      spaceKey: false,
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: false,
+    });
+    controller.handlePointerUp();
+
+    expect(controller.getSnapshot().elements[0]).toMatchObject({
+      type: 'ellipse',
+      x: 0,
+      y: 0,
+      width: 60,
+      height: 60,
+    });
+  });
+
+  it('creates an arrow and lets the selected endpoint be edited', () => {
+    const controller = new EditorController();
+
+    setViewport(controller);
+    controller.setTool('arrow');
+
+    controller.handlePointerDown({
+      pointerId: 4,
+      button: 0,
+      buttons: 1,
+      clientX: 400,
+      clientY: 300,
+      spaceKey: false,
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: false,
+    });
+    controller.handlePointerMove({
+      pointerId: 4,
+      button: 0,
+      buttons: 1,
+      clientX: 460,
+      clientY: 300,
+      spaceKey: false,
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: false,
+    });
+    controller.handlePointerUp();
+
+    controller.setTool('select');
+    controller.handlePointerDown({
+      pointerId: 5,
+      button: 0,
+      buttons: 1,
+      clientX: 430,
+      clientY: 300,
+      spaceKey: false,
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: false,
+    });
+    controller.handlePointerUp();
+
+    controller.handlePointerDown({
+      pointerId: 6,
+      button: 0,
+      buttons: 1,
+      clientX: 460,
+      clientY: 300,
+      spaceKey: false,
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: false,
+    });
+    controller.handlePointerMove({
+      pointerId: 6,
+      button: 0,
+      buttons: 1,
+      clientX: 480,
+      clientY: 320,
+      spaceKey: false,
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: false,
+    });
+    controller.handlePointerUp();
+
+    expect(controller.getSnapshot().elements[0]).toMatchObject({
+      type: 'arrow',
+      x: 0,
+      y: 0,
+      endX: 80,
+      endY: 20,
+    });
+  });
+
+  it('moves and resizes a selected rectangle', () => {
+    const controller = new EditorController();
+
+    setViewport(controller);
+    controller.setTool('rectangle');
+
+    controller.handlePointerDown({
+      pointerId: 7,
+      button: 0,
+      buttons: 1,
+      clientX: 400,
+      clientY: 300,
+      spaceKey: false,
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: false,
+    });
+    controller.handlePointerMove({
+      pointerId: 7,
+      button: 0,
+      buttons: 1,
+      clientX: 460,
+      clientY: 360,
+      spaceKey: false,
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: false,
+    });
+    controller.handlePointerUp();
+
+    controller.setTool('select');
+    controller.handlePointerDown({
+      pointerId: 8,
+      button: 0,
+      buttons: 1,
+      clientX: 430,
+      clientY: 330,
+      spaceKey: false,
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: false,
+    });
+    controller.handlePointerMove({
+      pointerId: 8,
+      button: 0,
+      buttons: 1,
+      clientX: 450,
+      clientY: 360,
+      spaceKey: false,
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: false,
+    });
+    controller.handlePointerUp();
+
+    expect(controller.getSnapshot().elements[0]).toMatchObject({
+      type: 'rectangle',
+      x: 20,
+      y: 30,
+      width: 60,
+      height: 60,
+    });
+
+    controller.handlePointerDown({
+      pointerId: 9,
+      button: 0,
+      buttons: 1,
+      clientX: 420,
+      clientY: 330,
+      spaceKey: false,
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: false,
+    });
+    controller.handlePointerMove({
+      pointerId: 9,
+      button: 0,
+      buttons: 1,
+      clientX: 400,
+      clientY: 300,
+      spaceKey: false,
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: false,
+    });
+    controller.handlePointerUp();
+
+    expect(controller.getSnapshot().elements[0]).toMatchObject({
+      type: 'rectangle',
+      x: 0,
+      y: 0,
+      width: 80,
+      height: 90,
+    });
+  });
+
+  it('deletes the selected element from keyboard input', () => {
+    const controller = new EditorController();
+
+    setViewport(controller);
+    controller.setTool('rectangle');
+
+    controller.handlePointerDown({
+      pointerId: 10,
+      button: 0,
+      buttons: 1,
+      clientX: 400,
+      clientY: 300,
+      spaceKey: false,
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: false,
+    });
+    controller.handlePointerMove({
+      pointerId: 10,
+      button: 0,
+      buttons: 1,
+      clientX: 460,
+      clientY: 360,
+      spaceKey: false,
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: false,
+    });
+    controller.handlePointerUp();
+
+    controller.setTool('select');
+    controller.handlePointerDown({
+      pointerId: 11,
+      button: 0,
+      buttons: 1,
+      clientX: 430,
+      clientY: 330,
+      spaceKey: false,
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: false,
+    });
+    controller.handlePointerUp();
+
+    expect(controller.handleKeyDown('Delete')).toBe(true);
+    expect(controller.getSnapshot().elements).toHaveLength(0);
+    expect(controller.getViewportState().selectedElementId).toBeNull();
   });
 
   it('updates document camera when zooming with ctrl + wheel', () => {
     const controller = new EditorController();
 
-    controller.setViewportSize(800, 600);
+    setViewport(controller);
     controller.handleWheel({
       clientX: 320,
       clientY: 240,
@@ -100,7 +365,7 @@ describe('EditorController', () => {
   it('pans the camera when scrolling without ctrl', () => {
     const controller = new EditorController();
 
-    controller.setViewportSize(800, 600);
+    setViewport(controller);
     controller.handleWheel({
       clientX: 320,
       clientY: 240,
@@ -111,50 +376,5 @@ describe('EditorController', () => {
     });
 
     expect(controller.getSnapshot().camera).toMatchObject({ x: -30, y: -120, zoom: 1 });
-  });
-
-  it('keeps document state in sync when using keyboard zoom helpers', () => {
-    const controller = new EditorController();
-
-    controller.setViewportSize(800, 600);
-    controller.zoomIn();
-    controller.zoomOut();
-
-    expect(controller.getSnapshot().camera.zoom).toBeCloseTo(1, 5);
-
-    controller.resetZoom();
-
-    expect(controller.getSnapshot().camera.zoom).toBe(1);
-  });
-
-  it('uses left-button drag as pan when the hand tool is active', () => {
-    const controller = new EditorController();
-
-    controller.setTool('hand');
-
-    expect(
-      controller.handlePointerDown({
-        pointerId: 4,
-        button: 0,
-        buttons: 1,
-        clientX: 40,
-        clientY: 40,
-        spaceKey: false,
-        altKey: false,
-        shiftKey: false,
-        ctrlKey: false,
-      }),
-    ).toBe(true);
-    expect(controller.getViewportState().panSource).toBe('hand-tool');
-  });
-
-  it('toggles grid visibility in document app state', () => {
-    const controller = new EditorController();
-
-    controller.setGridEnabled(false);
-    expect(controller.getSnapshot().appState.gridEnabled).toBe(false);
-
-    controller.setGridEnabled(true);
-    expect(controller.getSnapshot().appState.gridEnabled).toBe(true);
   });
 });

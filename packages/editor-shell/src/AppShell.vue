@@ -63,6 +63,12 @@ useShortcuts({
   onResetZoom: () => {
     editor.controller.resetZoom();
   },
+  onSelectTool: (tool) => {
+    editor.setTool(tool);
+  },
+  onDeleteSelection: () => {
+    editor.controller.deleteSelection();
+  },
 });
 </script>
 

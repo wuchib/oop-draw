@@ -205,6 +205,33 @@ describe('CanvasViewport', () => {
     wrapper.unmount();
   });
 
+  it('shows a crosshair cursor for shape drawing tools', () => {
+    const controller = new EditorController(createDocument());
+
+    const wrapper = mount(CanvasViewport, {
+      props: {
+        controller,
+        document: controller.getSnapshot(),
+        tool: 'rectangle',
+        viewportState: {
+          ...controller.getViewportState(),
+          isDrawing: true,
+          interaction: 'drawing',
+        },
+      },
+      global: {
+        stubs: {
+          Panel: {
+            template: '<div><slot /></div>',
+          },
+        },
+      },
+    });
+
+    expect(wrapper.get('[aria-label="Canvas stage"]').classes()).toContain('cursor-crosshair');
+    wrapper.unmount();
+  });
+
   it('keeps pointer capture for a pan session until pointerup', async () => {
     const controller = new EditorController(createDocument());
 

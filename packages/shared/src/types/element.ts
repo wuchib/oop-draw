@@ -1,4 +1,4 @@
-export type CanvasElementType = 'rectangle' | 'text';
+export type CanvasElementType = 'rectangle' | 'ellipse' | 'arrow' | 'text';
 
 export interface CanvasElementBase {
   id: string;
@@ -7,10 +7,28 @@ export interface CanvasElementBase {
   y: number;
 }
 
-export interface RectangleElement extends CanvasElementBase {
+export interface ShapeStyle {
+  strokeColor: string;
+  strokeWidth: number;
+  fillColor: string;
+}
+
+export interface RectangleElement extends CanvasElementBase, ShapeStyle {
   type: 'rectangle';
   width: number;
   height: number;
+}
+
+export interface EllipseElement extends CanvasElementBase, ShapeStyle {
+  type: 'ellipse';
+  width: number;
+  height: number;
+}
+
+export interface ArrowElement extends CanvasElementBase, ShapeStyle {
+  type: 'arrow';
+  endX: number;
+  endY: number;
 }
 
 export interface TextElement extends CanvasElementBase {
@@ -18,4 +36,5 @@ export interface TextElement extends CanvasElementBase {
   text: string;
 }
 
-export type CanvasElement = RectangleElement | TextElement;
+export type ShapeElement = RectangleElement | EllipseElement | ArrowElement;
+export type CanvasElement = ShapeElement | TextElement;

@@ -1,3 +1,4 @@
+import type { ToolId } from '@oop-draw/shared';
 import { onMounted, onUnmounted } from 'vue';
 
 interface ShortcutHandlers {
@@ -6,6 +7,8 @@ interface ShortcutHandlers {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onResetZoom: () => void;
+  onSelectTool: (tool: ToolId) => void;
+  onDeleteSelection: () => void;
 }
 
 export function useShortcuts(handlers: ShortcutHandlers): void {
@@ -36,6 +39,36 @@ export function useShortcuts(handlers: ShortcutHandlers): void {
     if (isModifier && key === '0') {
       event.preventDefault();
       handlers.onResetZoom();
+    }
+
+    if (!isModifier && key === 'v') {
+      event.preventDefault();
+      handlers.onSelectTool('select');
+    }
+
+    if (!isModifier && key === 'h') {
+      event.preventDefault();
+      handlers.onSelectTool('hand');
+    }
+
+    if (!isModifier && key === 'r') {
+      event.preventDefault();
+      handlers.onSelectTool('rectangle');
+    }
+
+    if (!isModifier && key === 'o') {
+      event.preventDefault();
+      handlers.onSelectTool('ellipse');
+    }
+
+    if (!isModifier && key === 'a') {
+      event.preventDefault();
+      handlers.onSelectTool('arrow');
+    }
+
+    if (!isModifier && (key === 'delete' || key === 'backspace')) {
+      event.preventDefault();
+      handlers.onDeleteSelection();
     }
   };
 
