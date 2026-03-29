@@ -3,4 +3,5 @@ dist/
 coverage/
 out/
 .vite/
+.vite-renderer/
 *.log
