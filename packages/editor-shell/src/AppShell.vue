@@ -36,6 +36,10 @@ const showFooter = ref(true);
 const showSettings = ref(false);
 
 function handleToolChange(tool: ToolId): void {
+  if (editor.viewportState.value.selectedElementId) {
+    editor.controller.clearSelection();
+  }
+
   editor.setTool(tool);
 }
 

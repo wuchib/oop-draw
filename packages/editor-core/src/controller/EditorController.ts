@@ -407,6 +407,10 @@ export class EditorController {
       return true;
     }
 
+    if (code === 'Escape') {
+      return this.clearSelection();
+    }
+
     if (code === 'Delete' || code === 'Backspace') {
       return this.deleteSelection();
     }
@@ -464,6 +468,18 @@ export class EditorController {
     this.document.elements = this.document.elements.filter((element) => element.id !== selectedId);
     this.selection.ids = [];
     this.touchDocument();
+    this.emitChange();
+    return true;
+  }
+
+  clearSelection(): boolean {
+    if (this.selection.ids.length === 0) {
+      return false;
+    }
+
+    this.selection.ids = [];
+    this.hoveredHandle = null;
+    this.isHoveringSelectedElementBody = false;
     this.emitChange();
     return true;
   }
@@ -595,6 +611,8 @@ export class EditorController {
       case 'nw':
         return { x: bounds.left, y: bounds.top };
     }
+
+    throw new Error(`Unsupported handle: ${String(target.handle)}`);
   }
 
   private findTopmostShapeAt(worldPoint: Point): ShapeElement | null {

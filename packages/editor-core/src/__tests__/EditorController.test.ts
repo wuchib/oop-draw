@@ -809,6 +809,81 @@ describe('EditorController', () => {
     expect(controller.getViewportState().selectedElementId).toBeNull();
   });
 
+  it('clears the current selection without removing elements', () => {
+    const controller = new EditorController();
+
+    setViewport(controller);
+    controller.setTool('rectangle');
+
+    controller.handlePointerDown({
+      pointerId: 25,
+      button: 0,
+      buttons: 1,
+      clientX: 400,
+      clientY: 300,
+      spaceKey: false,
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: false,
+    });
+    controller.handlePointerMove({
+      pointerId: 25,
+      button: 0,
+      buttons: 1,
+      clientX: 460,
+      clientY: 360,
+      spaceKey: false,
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: false,
+    });
+    controller.handlePointerUp();
+
+    expect(controller.getViewportState().selectedElementId).toBe(controller.getSnapshot().elements[0]?.id);
+
+    expect(controller.clearSelection()).toBe(true);
+    expect(controller.getViewportState().selectedElementId).toBeNull();
+    expect(controller.getSnapshot().elements).toHaveLength(1);
+    expect(controller.clearSelection()).toBe(false);
+  });
+
+  it('clears the current selection when escape is pressed', () => {
+    const controller = new EditorController();
+
+    setViewport(controller);
+    controller.setTool('rectangle');
+
+    controller.handlePointerDown({
+      pointerId: 26,
+      button: 0,
+      buttons: 1,
+      clientX: 400,
+      clientY: 300,
+      spaceKey: false,
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: false,
+    });
+    controller.handlePointerMove({
+      pointerId: 26,
+      button: 0,
+      buttons: 1,
+      clientX: 460,
+      clientY: 360,
+      spaceKey: false,
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: false,
+    });
+    controller.handlePointerUp();
+
+    expect(controller.getViewportState().selectedElementId).toBe(controller.getSnapshot().elements[0]?.id);
+    expect(controller.handleKeyDown('Escape')).toBe(true);
+    expect(controller.getViewportState().selectedElementId).toBeNull();
+    expect(controller.getSnapshot().elements).toHaveLength(1);
+    expect(controller.handleKeyDown('Escape')).toBe(false);
+  });
+
   it('updates document camera when zooming with ctrl + wheel', () => {
     const controller = new EditorController();
 
